@@ -1,19 +1,23 @@
 import { loadStdlib } from '@reach-sh/stdlib';
-import * as backend  from './build/index.main.mjs';
-const stdlib = loadStdlib()
+import * as backend from './build/index.main.mjs';
+const stdlib = loadStdlib();
 
 const startingBalance = stdlib.parseCurrency(100);
 const accAlice = await stdlib.newTestAccount(startingBalance);
 const accBob = await stdlib.newTestAccount(startingBalance);
+
+const fmt = (x) => stdlib.formatCurrency(x, 4);//formats currency up to 4 decimal places 
+const getBalance = async (who) => fmt(await stdlib.balanceOf(who)); //helpful function for getting the balance of a participant and displaying it with up to 4 decimal places.
+const beforeAlice = await getBalance(accAlice);//get the balance before the game starts for both Alice and Bob
+const beforeBob = await getBalance(accBob);//get the balance before the game starts for both Alice and Bob
 const ctcAlice = accAlice.contract(backend);
 const ctcBob = accBob.contract(backend, ctcAlice.getInfo());
 
-
-
 const HAND = ['Rock', 'Paper', 'Scissors'];
 const OUTCOME = ['Bob wins', 'Draw', 'Alice wins'];
-const Player = (Who) => ({
 
+const Player = (Who) => ({
+    ...stdlib.hasRandom,
     getHand: () => {
         const hand = Math.floor(Math.random() * 3);
         console.log(`${Who} played ${HAND[hand]}`)
@@ -28,8 +32,18 @@ const Player = (Who) => ({
 await Promise.all([
     ctcAlice.p.Alice({
         ...Player('Alice'),
+        wager: stdlib.parseCurrency(5),
     }),
     ctcBob.p.Bob({
         ...Player('Bob'),
+        acceptWager: (amt) => {
+            console.log(`Bob accepts the wager of ${fmt(amt)}.`)
+        }
     }),
 ])
+
+const afterAlice = await getBalance(accAlice);
+const afterBob = await getBalance(accBob);//Lines 44 and 45 get the balances afterwards
+
+console.log(`Alice went from ${beforeAlice} to ${afterAlice}.`)
+console.log(`Bob went from ${beforeBob} to ${afterBob}`)
